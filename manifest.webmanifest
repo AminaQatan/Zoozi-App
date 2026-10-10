@@ -1,0 +1,27 @@
+{
+  "id": "./",
+  "name": "Zoozi App",
+  "short_name": "Zoozi App",
+  "description": "60 colorful English stories with expressive narration, gentle music, and turning pages.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f7ff",
+  "theme_color": "#6b48c7",
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
