@@ -129,7 +129,30 @@ window.addEventListener('hashchange',parseRoute);window.addEventListener('keydow
 function installed(){return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}
 function installState(){if(installed()){$('#install-top').hidden=true;$('#install-settings').hidden=true;$('#install-help').textContent='This app is on your home screen.'}}
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('#install-help').textContent='Tap Install App to add Zoozi App to your home screen.'});window.addEventListener('appinstalled',()=>{installPrompt=null;installState();notify('Zoozi App is ready on your home screen.')});
-async function install(){if(installed()){notify('The app is already installed.');return}if(installPrompt){const p=installPrompt;installPrompt=null;await p.prompt();await p.userChoice}else{if(!settings.open)settings.showModal();$('#install-help').textContent=/iPhone|iPad|iPod/.test(navigator.userAgent)?'In Safari, tap Share, then Add to Home Screen.':'Open your browser menu and choose Install app or Add to home screen.';$('#install-help').scrollIntoView({block:'nearest'})}}
+function showInstallHelp(){
+  if(!settings.open)settings.showModal();
+  const ua=navigator.userAgent;
+  const ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);
+  $('#install-help').textContent=ios
+    ?'Open this link in Safari. Tap Share, then Add to Home Screen. If you opened it inside another app, copy the link into Safari first.'
+    :/Android/.test(ua)
+      ?'Open this link directly in Chrome, outside a chat or social app. Tap the Chrome menu (three dots), then Add to home screen and Install. Use a regular tab, not Incognito.'
+      :'Open your browser menu and choose Install app or Add to home screen. You can also keep reading here without installing.';
+  $('#install-help').scrollIntoView({block:'nearest'});
+}
+async function install(){
+  if(installed()){notify('The app is already installed.');return;}
+  if(!installPrompt){showInstallHelp();return;}
+  const prompt=installPrompt;installPrompt=null;
+  try{
+    await prompt.prompt();
+    const choice=await prompt.userChoice;
+    if(choice.outcome!=='accepted')showInstallHelp();
+  }catch{showInstallHelp();}
+}
 $('#install-top').onclick=install;$('#install-settings').onclick=install;installState();parseRoute();
-if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').then(reg=>reg.update()).catch(()=>{}));
+// Register as soon as the scripts are ready, without waiting for images or fonts.
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{
+  $('#install-help').textContent='The offline copy could not finish loading. Keep your internet connection on and reload to try again. You can still read online.';
+});
 if(document.modelContext?.registerTool){const lifecycle=new AbortController();for(const t of [{name:'list_stories',title:'List stories',description:'List the illustrated English stories.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute(){return STORIES.map(s=>({id:s.id,title:s.title,pages:s.pages.length}))}},{name:'open_story_page',title:'Open a story page',description:'Navigate the visible reader to a story and page. Does not start narration.',inputSchema:{type:'object',properties:{storyId:{type:'string'},page:{type:'integer',minimum:1}},required:['storyId','page'],additionalProperties:false},annotations:{readOnlyHint:false},execute(input){const s=STORIES.find(s=>s.id===input?.storyId);if(!s||!Number.isInteger(input.page)||input.page<1||input.page>s.pages.length)throw new Error('Choose a valid story ID and page.');history.replaceState(null,'',routeHash(s.id,input.page-1));parseRoute();return {storyId:s.id,page:input.page,sentences:s.pages[input.page-1].en}}}])try{Promise.resolve(document.modelContext.registerTool(t,{signal:lifecycle.signal})).catch(()=>{})}catch{}window.addEventListener('pagehide',()=>lifecycle.abort(),{once:true})}

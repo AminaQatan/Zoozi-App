@@ -1,6 +1,8 @@
 const CACHE_PREFIX='zoozi-'+encodeURIComponent(self.registration.scope)+'-';
-const CACHE=CACHE_PREFIX+'v8';
-const SHELL=['./','index.html','app.css?v=8','app.js?v=8','stories.js?v=8','fable-stories.js?v=8','manifest.webmanifest?v=8','icon.svg?v=8','icon-192.png?v=8','icon-512.png','assets/fonts/Nunito.ttf','assets/audio/storybook_garden.mp3'];
+const CACHE=CACHE_PREFIX+'v9';
+// Only the small app shell is required to install. Pictures, fonts and audio
+// are cached when requested, so a slow media download cannot block setup.
+const SHELL=['./','index.html','app.css?v=9','app.js?v=9','stories.js?v=9','fable-stories.js?v=9','manifest.webmanifest?v=9','icon.svg?v=9','icon-192.png?v=9','icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith(CACHE_PREFIX)&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 async function audioResponse(req,cache){let response=await cache.match(req.url);if(!response){const headers=new Headers(req.headers);headers.delete('range');response=await fetch(new Request(req,{headers}));if(response.ok&&response.status===200)await cache.put(req.url,response.clone()).catch(()=>{})}const range=req.headers.get('range');if(!range||response.status!==200)return response;const match=/^bytes=(\d+)-(\d*)$/.exec(range);if(!match)return response;const buffer=await response.arrayBuffer(),start=Number(match[1]),end=match[2]?Math.min(Number(match[2]),buffer.byteLength-1):buffer.byteLength-1;if(start>end||start>=buffer.byteLength)return new Response(null,{status:416,headers:{'Content-Range':`bytes */${buffer.byteLength}`}});return new Response(buffer.slice(start,end+1),{status:206,headers:{'Content-Type':'audio/mpeg','Content-Length':String(end-start+1),'Accept-Ranges':'bytes','Content-Range':`bytes ${start}-${end}/${buffer.byteLength}`}})}
