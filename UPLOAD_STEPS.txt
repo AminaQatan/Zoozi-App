@@ -1,16 +1,29 @@
-ZOOZI APP - NOVELS UPDATE
+ZOOZI APP - EASY PHONE UPDATE
 
-This update adds Princess AL Zahraa in Wonderland to a new Novels section.
-The original 68-page PDF is unchanged.
+Download this new ZIP and extract it in your phone's Files/My Files app.
+This package contains eight files and no folders. Upload the extracted files.
 
-1. Extract this ZIP on your computer.
-2. In GitHub Desktop, select Zoozi-App, then Repository > Show in Explorer.
-3. Copy all files and the assets folder from this update into that repository folder.
-   Choose Replace the files in the destination. Merge assets with the existing folder; keep the other stories.
-4. In GitHub Desktop, enter: Add Princess Al Zahraa to Novels
-5. Click Commit to main, then Push origin.
-6. Wait for the latest Pages deployment under Actions to finish successfully.
-7. Open https://aminaqatan.github.io/Zoozi-App/#novels
+1. In Chrome, open:
+   https://github.com/AminaQatan/Zoozi-App
+2. Use Chrome menu > Desktop site if the upload button is hidden.
+3. Select Add file > Upload files > choose your files.
+4. Browse to the newly extracted folder. Select all eight files and upload.
+5. Write Update novel reader as the commit message.
+6. Select Commit changes to main (confirm if GitHub shows another dialog).
+7. Wait for GitHub Pages to deploy, then reopen:
+   https://aminaqatan.github.io/Zoozi-App/
 
-Use GitHub Desktop: the original PDF is larger than GitHub's browser-upload limit.
-This package is an update for the existing Zoozi-App repository, not a standalone app.
+All eight files go directly in the repository's main folder, beside the
+existing index.html. The files with matching names are replaced.
+Keep all existing story files and the existing assets folder.
+Upload the extracted files, not the ZIP archive.
+No Codespaces, terminal commands or desktop computer are required.
+
+WHAT CHANGED
+The final Novels section includes all 68 illustrated pages, continuous English
+read-aloud with automatic page turns, music controls, zoom and page selection.
+The illustrations are bundled into novel-pages.js so no picture folder needs
+to be uploaded. They download when you first open the novel.
+The downloadable PDF has been compressed; all 68 pages and text are retained.
+The novel uses your device's English reading voice. Existing short stories
+keep their recorded audio.
