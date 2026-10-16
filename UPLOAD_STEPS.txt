@@ -1,0 +1,16 @@
+ZOOZI APP - NOVELS UPDATE
+
+This update adds Princess AL Zahraa in Wonderland to a new Novels section.
+The original 68-page PDF is unchanged.
+
+1. Extract this ZIP on your computer.
+2. In GitHub Desktop, select Zoozi-App, then Repository > Show in Explorer.
+3. Copy all files and the assets folder from this update into that repository folder.
+   Choose Replace the files in the destination. Merge assets with the existing folder; keep the other stories.
+4. In GitHub Desktop, enter: Add Princess Al Zahraa to Novels
+5. Click Commit to main, then Push origin.
+6. Wait for the latest Pages deployment under Actions to finish successfully.
+7. Open https://aminaqatan.github.io/Zoozi-App/#novels
+
+Use GitHub Desktop: the original PDF is larger than GitHub's browser-upload limit.
+This package is an update for the existing Zoozi-App repository, not a standalone app.
