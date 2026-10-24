@@ -33,3 +33,13 @@
 .homeschool-tag{display:block;color:var(--book-color);font-size:12px;font-weight:800;line-height:1.5;margin-bottom:8px}.homeschool-books .book-copy h2{font-size:22px;line-height:1.3;margin:0 0 22px;overflow-wrap:anywhere}.homeschool-books .book-meta svg{width:23px;height:23px;flex-shrink:0}.homeschool-books .book-meta{gap:8px;font-size:13px}
 @media(max-width:800px){.homeschool-books{grid-template-columns:repeat(2,minmax(0,1fr))}.homeschool-books .book-copy h2{font-size:18px}.homeschool-art{font-size:53px}.homeschool-shelf-art{flex-basis:76px;height:72px;font-size:38px}.homeschool-shelf-art span{font-size:23px}.playlist-reader .reader-top{flex-wrap:wrap}.playlist-reader .reader-title{flex:1;min-width:160px}}
 @media(max-width:380px){.homeschool-books{grid-template-columns:1fr}.homeschool-art{aspect-ratio:2/1}}
+
+/* Soft Fable Cottage gradient and first-video thumbnail cards */
+.fable-shelf button{background:linear-gradient(110deg,#fff 0%,#f0e8ff 52%,#fff0c2 100%);color:#5432a9;border:2px solid #dfcdec;box-shadow:0 4px 0 #b49bd6}
+.fable-shelf img{border:2px solid #f2d687;flex-shrink:0}
+.online-shelf .playlist-video-thumbnail{flex-shrink:0;border:2px solid #fff;background:#fff;object-fit:cover}
+.homeschool-video-art{aspect-ratio:16/9;overflow:hidden;background:#fff}
+.homeschool-video-art>.playlist-video-thumbnail{display:block;width:100%;height:100%;object-fit:cover}
+.homeschool-video-art .homeschool-card-number{top:8px;left:8px;width:27px;height:27px;font-size:13px;box-shadow:0 2px 6px #0002}
+.homeschool-video-art .homeschool-play{right:8px;bottom:8px;padding:6px;box-shadow:0 2px 6px #0002}
+@media(max-width:380px){.homeschool-video-art{aspect-ratio:16/9}}
