@@ -43,3 +43,88 @@
 .homeschool-video-art .homeschool-card-number{top:8px;left:8px;width:27px;height:27px;font-size:13px;box-shadow:0 2px 6px #0002}
 .homeschool-video-art .homeschool-play{right:8px;bottom:8px;padding:6px;box-shadow:0 2px 6px #0002}
 @media(max-width:380px){.homeschool-video-art{aspect-ratio:16/9}}
+
+/* v16: phone/tablet layouts adapt without interrupting the story. */
+html{min-height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{min-height:100svh;min-height:100dvh;padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+#app,.reader,.library,.online-shelf button>span,.page-copy{min-width:0}
+.app-header{padding-top:max(12px,env(safe-area-inset-top,0px))}
+.app-credit{overflow-wrap:anywhere}
+.online-shelf img{flex-shrink:0}.online-shelf strong,.reader-title{overflow-wrap:anywhere}
+.reader{padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
+.reader-top{gap:10px;margin-bottom:10px}.reader-title{flex:1}
+.page-copy{display:flow-root}
+.page-art{width:min(100%,calc(var(--art-room,65svh) * var(--ratio)));max-width:100%}
+.novel-page-picture{width:min(100%,calc(var(--art-room,55svh) * 2 / 3));max-width:100%}
+.page-nav{margin-top:12px}.nav-button{min-height:44px}
+.original-player{width:min(100%,calc(var(--video-room,70svh) * 16 / 9));margin-inline:auto}
+.original-player iframe{max-width:100%}
+.dialog-heading{gap:12px}dialog{max-height:calc(100svh - 24px);max-height:calc(100dvh - 24px)}
+.page-zoom{max-height:calc(100dvh - 16px)}
+.fullscreen-toggle{background:#fff6d8;color:#6744bf}
+.fullscreen-toggle[aria-pressed=true]{background:#ede4ff}
+.reading-view .install-top,.watching-view .install-top{display:none}
+.reading-view .app-header,.watching-view .app-header{padding-block:8px;gap:10px}
+.reading-view .brand svg,.watching-view .brand svg{width:44px;height:44px}
+.reading-view .header-actions,.watching-view .header-actions{gap:8px}
+.reading-view .icon-button,.watching-view .icon-button{min-width:44px;min-height:44px;padding:10px}
+.reading-view .icon-button span,.watching-view .icon-button span{display:none}
+.reading-view .reader-bottom{margin-top:16px;padding:0 12px}
+.novel-tools label{min-width:0}.novel-tools select{min-width:0;max-width:min(220px,100%)}
+@media(max-width:700px){
+  .app-header{padding:12px;gap:10px;flex-wrap:nowrap}
+  .brand{font-size:19px;gap:7px}.brand svg{width:44px;height:44px;flex-shrink:0}
+  .header-actions{gap:7px}.header-actions .icon-button{min-width:44px;min-height:44px;padding:10px}
+  .install-top:not([hidden]){display:none} /* Installation remains available in Settings. */
+  .reader{padding-inline:8px}.reader-top{margin:0 0 8px;gap:8px;flex-wrap:nowrap}
+  .reader-title,.playlist-reader .reader-title{font-size:18px;min-width:0}
+  .back-button{min-width:60px;min-height:44px;padding:8px 10px;flex-shrink:0}
+  .download-link{min-height:44px;min-width:36px;padding:12px 0}
+  .page-nav{margin:10px 0 0;gap:8px}.nav-button{padding:10px 16px;min-height:44px}
+  .reading p{font-size:1rem}.page-footnote{margin-top:6px}
+  .video-reader .reader-top{margin:0 0 8px}
+  .video-reader .online-intro{font-size:13px;padding:0 4px;margin-bottom:10px}
+  .novel-tools{padding:6px 8px;gap:8px}.novel-tools label{flex:1 1 130px;flex-wrap:wrap;gap:3px}
+  .novel-tools select{width:100%;max-width:100%}
+  .novel-voice-note{margin:6px 10px}
+  .novel-transcript{padding:8px 10px}
+  .novel-transcript summary{display:flex;align-items:center;min-height:44px}
+}
+@media(max-width:380px){
+  .app-header .brand span{display:none}
+  .online-shelf button{gap:9px}.online-shelf img{width:72px;height:62px}
+  .online-shelf strong{font-size:17px}.online-shelf small{font-size:12px}
+  .reader-title,.novel-reader .reader-title{font-size:16px}
+  .nav-button{font-size:14px;padding:10px 12px}
+}
+/* A wide, short screen gets a picture-and-reading spread, with controls in reach. */
+@media(orientation:landscape) and (max-height:600px){
+  .reading-view .app-header,.watching-view .app-header{padding:4px 12px;padding-top:max(4px,env(safe-area-inset-top,0px))}
+  .reading-view .brand,.watching-view .brand{font-size:18px}
+  .reading-view .reader,.watching-view .reader{padding-top:0;padding-inline:12px}
+  .reader-top{margin:0 0 6px;gap:10px}
+  .reader-title,.novel-reader .reader-title,.playlist-reader .reader-title{font-size:17px}
+  .back-button{min-height:44px;padding:8px 12px}
+  .reading-view .story-page{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,32%);height:var(--page-room,55svh);align-items:center;gap:0;padding:0}
+  .reading-view .page-art,.reading-view .novel-page-picture{align-self:center}
+  .reading-view .page-copy{height:100%;max-height:100%;overflow:auto;overscroll-behavior:contain;padding:6px 0;align-content:center;border-left:2px solid var(--book-tint)}
+  .reading-view .reading{flex-direction:column;align-items:stretch;gap:8px;margin:0 6px;padding:8px}
+  .reading-view .reading p{font-size:1rem;line-height:1.35}
+  .reading-view .listen{flex-direction:row;width:100%;height:auto;min-height:44px;padding:8px;gap:8px}
+  .reading-view .page-footnote{margin:8px 10px 0}
+  .page-nav{margin:8px 0 0;gap:12px}.nav-button{min-height:44px;font-size:15px;padding:8px 20px}
+  .dots{margin-top:4px}.page-progress{font-size:13px}
+  .novel-tools{gap:8px;padding:8px}.novel-tools label{width:100%;flex-wrap:wrap;gap:4px}
+  .novel-tools select{width:100%;max-width:100%}.novel-transcript{margin:6px 8px;padding:8px}
+  .novel-transcript summary{min-height:44px;display:flex;align-items:center}
+  .novel-voice-note{margin:6px 10px}
+  .watching-view .online-intro{display:none}
+  .playlist-reader .reader-top{flex-wrap:nowrap}.playlist-reader .reader-title{min-width:0}
+  .playlist-help{padding:14px}.original-links{margin-top:14px}
+  .library{padding-top:8px}.books{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .library-heading{margin-bottom:20px}
+  .online-shelf{margin-bottom:22px}
+}
+@media print{.fullscreen-toggle{display:none}.page-art{width:70%}.page-copy{overflow:visible}}
+
+.version-note{margin:0 0 16px;color:#6b48c7;font-weight:800}
