@@ -128,3 +128,47 @@ body{min-height:100svh;min-height:100dvh;padding-left:env(safe-area-inset-left,0
 @media print{.fullscreen-toggle{display:none}.page-art{width:70%}.page-copy{overflow:visible}}
 
 .version-note{margin:0 0 16px;color:#6b48c7;font-weight:800}
+
+/* v17: TV remote mode (Sony BRAVIA / Android TV / Google TV and smart-TV browsers) */
+.tv-hint{display:none}
+.setting-row label small{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-top:3px}
+.tv-mode .tv-hint{display:inline-flex;align-items:center;gap:9px;margin-top:12px;padding:7px 16px 7px 10px;border-radius:999px;background:#fff;color:#5432a9;font-size:15px;font-weight:800;box-shadow:0 3px 0 #e2dcf3}
+.tv-hint svg{width:24px;height:24px;flex-shrink:0}
+.tv-mode .install-top,.tv-mode .install-panel,.tv-mode .download-link,.tv-mode .reader-bottom{display:none!important}
+.tv-native .fullscreen-toggle,.tv-native .tv-setting{display:none!important}
+.tv-mode dialog::backdrop{backdrop-filter:none}
+.tv-mode :focus{outline:none}
+.tv-mode button:focus,.tv-mode a:focus,.tv-mode select:focus,.tv-mode input:focus,.tv-mode summary:focus{outline:4px solid #ff9f1c;outline-offset:3px}
+.tv-mode .app-header,.tv-mode .library{padding-left:max(36px,env(safe-area-inset-left,0px));padding-right:max(36px,env(safe-area-inset-right,0px))}
+.tv-mode .books{grid-template-columns:repeat(4,minmax(0,1fr));gap:24px 20px}
+.tv-mode .homeschool-books{grid-template-columns:repeat(3,minmax(0,1fr))}
+.tv-mode .book-copy{padding:13px 14px 13px;min-height:104px;gap:10px}
+.tv-mode .book-copy h3{font-size:18px}
+.tv-mode .homeschool-books .book-copy h2{font-size:19px;margin-bottom:12px}
+.tv-mode .online-shelf button,.tv-mode .book-card{transition:transform .16s ease-out,box-shadow .16s ease-out}
+.tv-mode .book-card:focus,.tv-mode .online-shelf button:focus{outline:5px solid #ff9f1c;outline-offset:4px;position:relative;z-index:1}
+.tv-mode .book-card:focus{transform:translateY(-6px) scale(1.04);box-shadow:0 7px 0 var(--book-color),0 18px 30px #33335b38}
+.tv-mode .online-shelf button:focus{transform:scale(1.012)}
+.tv-mode .listen:focus,.tv-mode .primary-button:focus,.tv-mode .tv-play:focus{filter:brightness(1.12)}
+.tv-mode .listen:focus{outline-width:5px}
+.tv-mode .back-button:focus,.tv-mode .nav-button:focus,.tv-mode .icon-button:focus,.tv-mode .tv-video-btn:focus,.tv-mode .brand:focus{transform:translateY(-2px)}
+.tv-mode .brand{border-radius:18px}
+.tv-mode .novel-transcript summary{border-radius:8px}
+.tv-mode .setting-row input[type=range]:focus{outline-offset:6px}
+.tv-mode .reading-view .reader-top{margin-bottom:8px}
+/* Video controls a remote can reach (the YouTube player itself never takes focus). */
+.tv-video-bar{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.tv-video-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;min-width:52px;padding:10px 18px;border-radius:16px;background:#fff;color:var(--ink);font-size:16px;font-weight:900;box-shadow:0 3px 0 #dddcec}
+.tv-video-btn svg{width:22px;height:22px;flex-shrink:0}
+.tv-video-btn.tv-icon-only{padding:10px 14px}
+.tv-video-btn.tv-play{background:var(--purple);color:#fff;box-shadow:0 3px 0 #4e319b;min-width:116px}
+.tv-mode .video-reader .reader-top{flex-wrap:nowrap}
+.tv-mode .video-reader .reader-title{min-width:0;text-align:left;padding-left:6px}
+.tv-mode .original-player iframe{pointer-events:auto}
+.tv-theater,.tv-theater body{overflow:hidden}
+.tv-theater .original-player{position:fixed;inset:0;width:100vw!important;height:100vh;height:100dvh;max-width:none;margin:0;aspect-ratio:auto;z-index:50;background:#000}
+.tv-theater .original-player iframe{width:100%;height:100%;min-height:0;max-width:none}
+.tv-theater .tv-video-bar{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;padding:10px;border-radius:24px;background:#1d1438e0;box-shadow:0 10px 40px #0008;transition:opacity .3s,transform .3s}
+.tv-theater .tv-video-btn{box-shadow:none}
+.tv-theater.tv-bar-hidden .tv-video-bar{opacity:0;transform:translate(-50%,24px);pointer-events:none}
+.tv-theater .notice{z-index:70}

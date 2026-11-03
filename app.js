@@ -8,6 +8,28 @@ let current=null,pageIndex=0,turning=false,audio=null,audioButton=null,installPr
 let fableCurrent=null;
 let narrator=null,readingStory=false,storyFinished=false,readSession=0,playAttempt=0;
 let music=null,musicContext=null,musicGain=null,musicUnlocked=false;
+// v17: TV remote mode. On in the Zoozi TV app, on smart-TV browsers, with ?tv=1, or from Settings.
+const tvNative=Boolean(window.ZooziTVNative)||/\bZooziTV\//.test(navigator.userAgent);
+const tvMode=(()=>{
+  if(tvNative)return true;
+  try{const q=new URLSearchParams(location.search).get('tv');if(q==='1'||q==='0')localStorage.setItem('zoozi-tv',q);const saved=localStorage.getItem('zoozi-tv');if(saved==='1')return true;if(saved==='0')return false;}catch{}
+  return /\b(Android ?TV|Google ?TV|GoogleTV|AFT[A-Z]|BRAVIA|SonyDTV|SMART-TV|SmartTV|Tizen|Web0S|webOS|HbbTV|NetCast|Viera|AQUOSBrowser|CrKey|Opera TV|Vewd)\b/i.test(navigator.userAgent);
+})();
+document.documentElement.classList.toggle('tv-mode',tvMode);
+document.documentElement.classList.toggle('tv-native',tvNative);
+// Android TV's WebView has no built-in reading voice; the Zoozi TV app lends the TV's own voice to the novel.
+if(window.ZooziTVNative?.speak){
+  const pending=new Map();let seq=0;
+  const voice={name:'TV reading voice',lang:'en-US',voiceURI:'zoozi-tv-voice',default:true,localService:true};
+  class TVUtterance{constructor(text=''){this.text=String(text);this.lang='en-US';this.rate=1;this.pitch=1;this.volume=1;this.voice=null;this.onstart=null;this.onend=null;this.onerror=null;}}
+  const synth={speaking:false,pending:false,paused:false,onvoiceschanged:null,
+    getVoices:()=>[voice],
+    speak(u){const id='z'+(++seq);pending.set(id,u);synth.speaking=true;try{window.ZooziTVNative.speak(u.text,u.lang||'en-US',Number(u.rate)||1,Number(u.pitch)||1,id);}catch{pending.delete(id);setTimeout(()=>u.onerror?.({error:'synthesis-failed'}),0);}},
+    cancel(){pending.clear();synth.speaking=false;try{window.ZooziTVNative.stopSpeaking();}catch{}},
+    pause(){},resume(){},addEventListener(){},removeEventListener(){}};
+  window.__zooziTts=(id,event)=>{const u=pending.get(id);if(!u)return;if(event==='start'){u.onstart?.({utterance:u});return;}pending.delete(id);synth.speaking=pending.size>0;if(event==='done')u.onend?.({utterance:u});else u.onerror?.({utterance:u,error:event});};
+  try{Object.defineProperty(window,'speechSynthesis',{value:synth,configurable:true});Object.defineProperty(window,'SpeechSynthesisUtterance',{value:TVUtterance,configurable:true,writable:true});}catch{}
+}
 const groups=[{title:'Little acts of kindness',color:'#007e88',tint:'#dff8f3'},{title:'Al Zahraa’s adventures',color:'#bd417e',tint:'#ffe9f1'},{title:'My little world',color:'#6b48c7',tint:'#f0eaff'},{title:'Daily discoveries',color:'#a66400',tint:'#fff1c7'},{title:'Animal friends',color:'#46762e',tint:'#e9f6df'},{title:'Outdoor adventures',color:'#3765ad',tint:'#e7f0ff'},{title:'Growing together',color:'#bd417e',tint:'#ffe9f1'}].map(g=>({...g,stories:STORIES.filter(s=>s.series===g.title)}));
 function art(s,page,cover=false){const src=cover?s.cover:page.image,panel=cover?s.coverPanel:page.panel,crop=cover?s.coverCrop:page.crop,ratio=(cover?s.coverRatio:page.imageRatio)||s.imageRatio;const framing=crop?`style="width:${100/crop[2]}%;height:${100/crop[3]}%;left:${-100*crop[0]/crop[2]}%;top:${-100*crop[1]/crop[3]}%;object-fit:fill"`:Number.isInteger(panel)?`class="panel p${panel}"`:'';return `<div class="art ${cover?'':'page-art'}" style="--ratio:${ratio}"><img src="${src}" ${framing} alt="${escapeHTML(cover?s.title:page.en.join(' '))}" ${cover?'loading="lazy"':'decoding="async"'} draggable="false"></div>`}
 function notify(message){clearTimeout(noticeTimer);$('#notice').textContent=message;$('#notice').hidden=false;noticeTimer=setTimeout(()=>$('#notice').hidden=true,6500)}
@@ -76,9 +98,9 @@ function fableStory(id){
   const story=FABLE_STORIES.find(s=>s.id===id);if(!story)return fableLibrary();
   resetForOnline();fableCurrent=story;document.title=`${story.title} · Zoozi App`;
   const native=location.hostname==='appassets.androidplatform.net';
-  const player=story.youtubeId?(native?`<div class="native-video-poster">${fableArt(story)}<a class="primary-button original-play" href="https://www.youtube.com/embed/${story.youtubeId}">${onlinePlayIcon}Play original</a></div>`:`<div class="original-player"><iframe id="fable-player" title="${escapeHTML(story.title)} — The Fable Cottage" src="https://www.youtube-nocookie.com/embed/${story.youtubeId}?playsinline=1&amp;enablejsapi=1&amp;origin=${encodeURIComponent(location.origin)}" referrerpolicy="strict-origin-when-cross-origin" allow="autoplay; encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe></div>`):`<div class="official-story"><h2>Listen on The Fable Cottage</h2><p>This opens the original illustrated story and audio. Some chapters may need a Fable Cottage membership.</p><a class="primary-button original-play" href="${story.sourceUrl}" target="_blank" rel="noopener">Open official story</a></div>`;
-  app.innerHTML=`<div class="reader video-reader"><div class="reader-top"><button class="back-button" id="back-fables">Stories</button><h1 class="reader-title">${escapeHTML(story.title)}</h1></div><p class="online-intro">${story.kind==='audiobook'?'Original audiobook':story.kind==='video'?'Original video':'Official story page'} · Internet required${story.accent?' · '+story.accent:''}</p>${player}<div class="original-links"><p>By The Fable Cottage · Original sound</p>${story.youtubeId?`<a href="${story.sourceUrl}" target="_blank" rel="noopener">Watch on YouTube</a>`:''}<a href="https://www.thefablecottage.com/languages/english" target="_blank" rel="noopener">The Fable Cottage website</a></div></div>`;
-  prepareVideoLayout();$('#back-fables').onclick=()=>{location.hash='#fables';};window.scrollTo({top:0,behavior:'instant'});
+  const player=story.youtubeId?(native?`<div class="native-video-poster">${fableArt(story)}<a class="primary-button original-play" href="https://www.youtube.com/embed/${story.youtubeId}">${onlinePlayIcon}Play original</a></div>`:`<div class="original-player"><iframe id="fable-player" title="${escapeHTML(story.title)} — The Fable Cottage" src="https://www.youtube-nocookie.com/embed/${story.youtubeId}?playsinline=1&amp;enablejsapi=1&amp;origin=${encodeURIComponent(location.origin)}" referrerpolicy="strict-origin-when-cross-origin" allow="autoplay; encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe></div>`):`<div class="official-story"><h2>Listen on The Fable Cottage</h2><p>${tvMode?'This story is on The Fable Cottage website, which works best on a phone, tablet or computer. Some chapters may need a Fable Cottage membership.':'This opens the original illustrated story and audio. Some chapters may need a Fable Cottage membership.'}</p><a class="primary-button original-play" href="${story.sourceUrl}" target="_blank" rel="noopener">Open official story</a></div>`;
+  app.innerHTML=`<div class="reader video-reader"><div class="reader-top"><button class="back-button" id="back-fables">Stories</button><h1 class="reader-title">${escapeHTML(story.title)}</h1>${tvMode&&story.youtubeId&&!native?tvVideoBar(false):''}</div><p class="online-intro">${story.kind==='audiobook'?'Original audiobook':story.kind==='video'?'Original video':'Official story page'} · Internet required${story.accent?' · '+story.accent:''}</p>${player}<div class="original-links"><p>By The Fable Cottage · Original sound</p>${story.youtubeId?`<a href="${story.sourceUrl}" target="_blank" rel="noopener">Watch on YouTube</a>`:''}<a href="https://www.thefablecottage.com/languages/english" target="_blank" rel="noopener">The Fable Cottage website</a></div></div>`;
+  prepareVideoLayout();$('#back-fables').onclick=()=>{location.hash='#fables';};window.scrollTo({top:0,behavior:'instant'});bindTvVideo();
 }
 
 // First-video thumbnails verified from the original playlists on 2026-10-24.
@@ -126,13 +148,13 @@ function showPlaylist({title,playlistId,description,backLabel,backHash}){
   const player=native
     ?`<div class="official-story"><h2>Ready to watch?</h2><p>Open the playlist to watch with its original sound.</p><a class="primary-button original-play" href="${sourceUrl}" target="_blank" rel="noopener">${onlinePlayIcon}Open playlist on YouTube</a></div>`
     :`<div class="original-player"><iframe id="playlist-player" title="${escapeHTML(title)} — YouTube playlist" src="${escapeHTML(embed)}" referrerpolicy="strict-origin-when-cross-origin" allow="autoplay; encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
-  app.innerHTML=`<div class="reader video-reader playlist-reader"><div class="reader-top"><button class="back-button" id="back-library">${escapeHTML(backLabel)}</button><h1 class="reader-title">${escapeHTML(title)}</h1></div><p class="online-intro">${escapeHTML(description)}</p>${player}<div class="playlist-help"><p>Tap Play to begin. Use the player’s playlist menu to choose another video.</p><a class="primary-button original-play" href="${sourceUrl}" target="_blank" rel="noopener">Open on YouTube ↗</a><p class="playlist-fallback">If a video cannot play here, open the playlist on YouTube.</p></div></div>`;
-  prepareVideoLayout();$('#back-library').onclick=()=>{if(backHash==='#library')navigate();else location.hash=backHash;};window.scrollTo({top:0,behavior:'instant'});
+  app.innerHTML=`<div class="reader video-reader playlist-reader"><div class="reader-top"><button class="back-button" id="back-library">${escapeHTML(backLabel)}</button><h1 class="reader-title">${escapeHTML(title)}</h1>${tvMode&&!native?tvVideoBar(true):''}</div><p class="online-intro">${escapeHTML(description)}</p>${player}<div class="playlist-help"><p>${tvMode?'Press OK on Play to begin. Use Next and Previous to change the video.':'Tap Play to begin. Use the player’s playlist menu to choose another video.'}</p><a class="primary-button original-play" href="${sourceUrl}" target="_blank" rel="noopener">Open on YouTube ↗</a><p class="playlist-fallback">If a video cannot play here, open the playlist on YouTube.</p></div></div>`;
+  prepareVideoLayout();$('#back-library').onclick=()=>{if(backHash==='#library')navigate();else location.hash=backHash;};window.scrollTo({top:0,behavior:'instant'});bindTvVideo();
 }
 
 function pauseOnlinePlayer(){app.querySelectorAll('#fable-player,#playlist-player').forEach(frame=>frame.contentWindow?.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), 'https://www.youtube-nocookie.com'));}
 
-function library(){document.body.classList.remove('reading-view','watching-view');fableCurrent=null;++turnToken;turning=false;storyFinished=false;stopAudio();pauseMusic();current=null;document.title='Zoozi App';app.innerHTML=`<div class="library"><div class="library-heading"><div><h1>Pick a <span>story!</span></h1><p>60 little stories to read and listen to.</p></div><div class="age-mark">2+<small>AGES</small></div></div>${fableShelf()}${playlistShelf()}${homeschoolShelf()}${groups.map((g,i)=>`<section class="series"><div class="series-heading" style="--series-color:${g.color};--series-tint:${g.tint}"><span class="series-number" aria-hidden="true">${i+1}</span><h2>${g.title}</h2></div><div class="books">${g.stories.map(s=>`<button class="book-card" data-story="${s.id}" style="--book-color:${s.color};--book-tint:${s.tint}" aria-label="Read ${escapeHTML(s.title)}"><div class="cover-wrap">${art(s,null,true)}</div><div class="book-copy"><h3>${escapeHTML(s.title)}</h3><div class="book-meta"><span>${s.pages.length} pages</span><span class="book-listen">${speaker}<span>Read & listen</span></span></div></div></button>`).join('')}</div></section>`).join('')}${novelsShelf()}</div>`;$('#open-fables').onclick=()=>{location.hash='#fables';};$('#open-playlist').onclick=()=>{location.hash='#english-playlist';};$('#open-homeschool').onclick=()=>{location.hash='#homeschool';};app.querySelectorAll('[data-story]').forEach(b=>b.addEventListener('click',()=>{startMusic(true);navigate(b.dataset.story,0)}));window.scrollTo({top:0,behavior:'instant'})}
+function library(){document.body.classList.remove('reading-view','watching-view');fableCurrent=null;++turnToken;turning=false;storyFinished=false;stopAudio();pauseMusic();current=null;document.title='Zoozi App';app.innerHTML=`<div class="library"><div class="library-heading"><div><h1>Pick a <span>story!</span></h1><p>60 little stories to read and listen to.</p>${tvMode?tvHint():''}</div><div class="age-mark">2+<small>AGES</small></div></div>${fableShelf()}${playlistShelf()}${homeschoolShelf()}${groups.map((g,i)=>`<section class="series"><div class="series-heading" style="--series-color:${g.color};--series-tint:${g.tint}"><span class="series-number" aria-hidden="true">${i+1}</span><h2>${g.title}</h2></div><div class="books">${g.stories.map(s=>`<button class="book-card" data-story="${s.id}" style="--book-color:${s.color};--book-tint:${s.tint}" aria-label="Read ${escapeHTML(s.title)}"><div class="cover-wrap">${art(s,null,true)}</div><div class="book-copy"><h3>${escapeHTML(s.title)}</h3><div class="book-meta"><span>${s.pages.length} pages</span><span class="book-listen">${speaker}<span>Read & listen</span></span></div></div></button>`).join('')}</div></section>`).join('')}${novelsShelf()}</div>`;$('#open-fables').onclick=()=>{location.hash='#fables';};$('#open-playlist').onclick=()=>{location.hash='#english-playlist';};$('#open-homeschool').onclick=()=>{location.hash='#homeschool';};app.querySelectorAll('[data-story]').forEach(b=>b.addEventListener('click',()=>{startMusic(true);navigate(b.dataset.story,0)}));window.scrollTo({top:0,behavior:'instant'})}
 function pageMarkup(){if(current.isNovel)return novelPageMarkup();const p=current.pages[pageIndex];return `${art(current,p)}<section class="reading"><div class="sentences" lang="en">${p.en.map(t=>`<p>${escapeHTML(t)}</p>`).join('')}</div><button class="listen" data-listen="en" aria-label="Read this story with automatic page turns" aria-pressed="false">${speaker}<span>Read story</span></button></section><div class="page-footnote"><span>Zoozi App</span><span>${pageIndex+1} / ${current.pages.length}</span></div>`}
 function bindPage(){prepareStoryLayout();syncReadButton();bindNovelPage();app.querySelectorAll('[data-listen]').forEach(b=>b.addEventListener('click',()=>play(b)));const el=$('#story-page');let start=null;el.onpointerdown=e=>{if(e.pointerType==='mouse'||e.target.closest('button,a,select,input,summary'))return;start={x:e.clientX,y:e.clientY}};el.onpointerup=e=>{if(!start)return;const dx=e.clientX-start.x,dy=e.clientY-start.y;start=null;if(Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)*1.3)flip(dx<0?1:-1)};el.onpointercancel=()=>start=null}
 function updateNav(){const n=current.pages.length;$('#previous').disabled=turning||pageIndex===0;$('#next').disabled=turning;$('#next').textContent=pageIndex===n-1?'Finish':'Next';$('#progress').innerHTML=`<span>Page ${pageIndex+1} of ${n}</span><div class="dots" aria-hidden="true">${(n>12?[]:current.pages).map((_,i)=>`<span class="${i===pageIndex?'current':''}"></span>`).join('')}</div>`}
@@ -176,7 +198,7 @@ function prefetchNext(){
 function saveSettings(){try{localStorage.setItem('first-stories-settings',JSON.stringify(prefs))}catch{}document.body.classList.toggle('no-animation',!prefs.flip)}
 $('#settings-open').onclick=()=>settings.showModal();settings.addEventListener('click',e=>{if(e.target===settings){const r=settings.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)settings.close()}});$('#audio-speed').value=String(prefs.speed);$('#page-animation').checked=prefs.flip;saveSettings();syncMusicControls();
 $('#audio-speed').onchange=e=>{prefs.speed=Number(e.target.value);if(audio)audio.playbackRate=prefs.speed;saveSettings()};$('#page-animation').onchange=e=>{prefs.flip=e.target.checked;saveSettings()};$('#music-toggle').onclick=()=>toggleMusic(!prefs.music);$('#background-music').onchange=e=>toggleMusic(e.target.checked);$('#music-volume').oninput=e=>{prefs.musicVolume=Number(e.target.value)/100;saveSettings();syncMusicControls()};$('#home').onclick=()=>navigate();
-window.addEventListener('hashchange',parseRoute);window.addEventListener('keydown',e=>{if(settings.open||!current||e.target.closest('select,input,textarea'))return;if(e.key==='ArrowRight'){e.preventDefault();flip(1)}if(e.key==='ArrowLeft'){e.preventDefault();flip(-1)}});document.addEventListener('visibilitychange',()=>{if(document.hidden){stopAudio();pauseMusic();pauseOnlinePlayer()}});window.addEventListener('pagehide',()=>{stopAudio();pauseMusic();pauseOnlinePlayer()});
+window.addEventListener('hashchange',parseRoute);window.addEventListener('keydown',e=>{if(tvMode||settings.open||!current||e.target.closest('select,input,textarea'))return;if(e.key==='ArrowRight'){e.preventDefault();flip(1)}if(e.key==='ArrowLeft'){e.preventDefault();flip(-1)}});document.addEventListener('visibilitychange',()=>{if(document.hidden){stopAudio();pauseMusic();pauseOnlinePlayer()}});window.addEventListener('pagehide',()=>{stopAudio();pauseMusic();pauseOnlinePlayer()});
 function installed(){return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}
 function installState(){if(installed()){$('#install-top').hidden=true;$('#install-settings').hidden=true;$('#install-help').textContent='This app is on your home screen.'}}
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('#install-help').textContent='Tap Install App to add Zoozi App to your home screen.'});window.addEventListener('appinstalled',()=>{installPrompt=null;installState();notify('Zoozi App is ready on your home screen.')});
@@ -273,7 +295,237 @@ document.addEventListener('fullscreenchange',syncFullScreen);
 document.addEventListener('webkitfullscreenchange',syncFullScreen);
 document.fonts?.ready.then(scheduleFit);
 
-$('#install-top').onclick=install;$('#install-settings').onclick=install;installState();parseRoute();
+// ---------- v17: TV remote control (arrows, OK, Back and media keys) ----------
+const tvIcons={
+  play:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>',
+  pause:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg>',
+  next:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 5v14l9-7zm10 0h3v14h-3z"/></svg>',
+  previous:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 5v14l-9-7zM6 5h3v14H6z"/></svg>',
+  big:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg>',
+  remote:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="3"/><path d="m12 4.6-1.7 2h3.4zm0 14.8-1.7-2h3.4zM4.6 12l2-1.7v3.4zm14.8 0-2-1.7v3.4z" fill="currentColor" stroke="none"/></svg>'
+};
+function tvHint(){return `<p class="tv-hint">${tvIcons.remote}<span>Use the arrows and <b>OK</b> on your remote · <b>Back</b> returns</span></p>`}
+function tvVideoBar(playlist){
+  return `<div class="tv-video-bar" role="toolbar" aria-label="Video controls">${playlist?`<button class="tv-video-btn tv-icon-only" data-tv-video="previous" aria-label="Previous video">${tvIcons.previous}</button>`:''}<button class="tv-video-btn tv-play" data-tv-video="play" aria-label="Play video">${tvIcons.play}<span>Play</span></button>${playlist?`<button class="tv-video-btn tv-icon-only" data-tv-video="next" aria-label="Next video">${tvIcons.next}</button>`:''}<button class="tv-video-btn" data-tv-video="big" aria-label="Big screen">${tvIcons.big}<span>Big screen</span></button></div>`;
+}
+let tvPlayerState=-1,tvTheater=false,tvBarTimer=0,tvFocusFrame=0;
+const tvMemory=new Map();
+const TV_FOCUSABLE='button:not([disabled]),a[href],select:not([disabled]),input:not([disabled]):not([type=hidden]),summary';
+function tvFrame(){return app.querySelector('#fable-player,#playlist-player')}
+function tvYouTube(func){try{tvFrame()?.contentWindow?.postMessage(JSON.stringify({event:'command',func,args:[]}),'*');}catch{}}
+function tvPlaying(){return tvPlayerState===1||tvPlayerState===3}
+function tvSyncPlayButton(){
+  const b=app.querySelector('.tv-play');if(!b)return;const on=tvPlaying();
+  b.innerHTML=(on?tvIcons.pause:tvIcons.play)+`<span>${on?'Pause':'Play'}</span>`;b.setAttribute('aria-label',on?'Pause video':'Play video');
+  if(!on)tvWakeBar();
+}
+function bindTvVideo(){
+  tvPlayerState=-1;tvSetTheater(false);
+  const frame=tvFrame();if(!tvMode||!frame)return;
+  frame.tabIndex=-1;
+  const listen=()=>{try{frame.contentWindow.postMessage(JSON.stringify({event:'listening',id:'zoozi-tv',channel:'widget'}),'*');}catch{}};
+  frame.addEventListener('load',()=>{listen();setTimeout(listen,1000);});
+  app.querySelectorAll('[data-tv-video]').forEach(b=>b.onclick=()=>tvVideoAction(b.dataset.tvVideo));
+}
+function tvVideoAction(action){
+  if(!tvFrame())return;
+  if(action==='play'){if(tvPlaying()){tvYouTube('pauseVideo');tvPlayerState=2;}else{tvYouTube('playVideo');tvPlayerState=1;if(!tvTheater)tvSetTheater(true);}tvSyncPlayButton();}
+  else if(action==='next'||action==='previous'){if(app.querySelector('[data-tv-video="next"]')){tvYouTube(action==='next'?'nextVideo':'previousVideo');tvPlayerState=1;tvSyncPlayButton();}}
+  else if(action==='big')tvSetTheater(!tvTheater);
+}
+function tvSetTheater(on){
+  on=Boolean(on&&tvFrame());tvTheater=on;
+  const root=document.documentElement;root.classList.toggle('tv-theater',on);root.classList.remove('tv-bar-hidden');clearTimeout(tvBarTimer);
+  const big=app.querySelector('[data-tv-video="big"]');
+  if(big){big.querySelector('span').textContent=on?'Small screen':'Big screen';big.setAttribute('aria-label',on?'Leave big screen':'Big screen');}
+  if(on)tvWakeBar();else scheduleFit();
+}
+function tvWakeBar(){
+  if(!tvTheater)return false;
+  const root=document.documentElement,wasHidden=root.classList.contains('tv-bar-hidden');
+  root.classList.remove('tv-bar-hidden');clearTimeout(tvBarTimer);
+  tvBarTimer=setTimeout(()=>{if(tvTheater&&tvPlaying())root.classList.add('tv-bar-hidden');},4000);
+  return wasHidden;
+}
+window.addEventListener('message',e=>{
+  if(!tvMode)return;
+  let host='';try{host=new URL(e.origin).hostname;}catch{return}
+  if(!/(^|\.)youtube(-nocookie)?\.com$/.test(host))return;
+  let data=e.data;if(typeof data==='string'){try{data=JSON.parse(data);}catch{return}}
+  if(!data||typeof data!=='object')return;
+  const state=data.event==='onStateChange'?data.info:data.info?.playerState;
+  if(typeof state==='number'&&state!==tvPlayerState){tvPlayerState=state;tvSyncPlayButton();}
+});
+function tvVisible(el){
+  if(!el?.isConnected||el.disabled||el.closest('[hidden]'))return false;
+  const r=el.getBoundingClientRect();if(r.width<2||r.height<2)return false;
+  const s=getComputedStyle(el);return s.visibility!=='hidden'&&s.display!=='none';
+}
+function tvScope(){return [...document.querySelectorAll('dialog')].find(d=>d.open)||(tvTheater&&app.querySelector('.tv-video-bar'))||document.body}
+function tvCandidates(){return [...tvScope().querySelectorAll(TV_FOCUSABLE)].filter(tvVisible)}
+function tvRoute(){const h=location.hash;if(!h||h==='#'||h==='#library')return '#library';return h.startsWith('#story/')?h.replace(/\/\d+$/,''):h}
+function tvKeyFor(el){
+  if(el.id)return '#'+CSS.escape(el.id);
+  for(const a of ['data-story','data-fable','data-homeschool','data-listen','data-tv-video'])if(el.hasAttribute(a))return `[${a}="${CSS.escape(el.getAttribute(a))}"]`;
+  return null;
+}
+function tvDefault(){
+  const scope=tvScope();
+  if(scope!==document.body){const list=[...scope.querySelectorAll(TV_FOCUSABLE)].filter(tvVisible);return list.find(el=>el.matches('.tv-play'))||list[0]||null;}
+  const remembered=tvMemory.get(tvRoute());
+  if(remembered){try{const el=document.querySelector(remembered);if(tvVisible(el))return el;}catch{}}
+  for(const sel of ['[data-listen]','.tv-play','.online-shelf button','.book-card','.original-play','.primary-button','.back-button']){const el=[...app.querySelectorAll(sel)].find(tvVisible);if(el)return el;}
+  return tvCandidates()[0]||null;
+}
+function tvReveal(el,smooth){
+  // Scroll any inner panel (story text, settings) first, then the page.
+  for(let parent=el.parentElement;parent&&parent!==document.body&&parent!==document.documentElement;parent=parent.parentElement){
+    const s=getComputedStyle(parent);
+    if(/(auto|scroll)/.test(s.overflowY)&&parent.scrollHeight>parent.clientHeight+2){
+      const pr=parent.getBoundingClientRect(),r=el.getBoundingClientRect();
+      if(r.top<pr.top+10)parent.scrollTop-=pr.top+10-r.top;else if(r.bottom>pr.bottom-10)parent.scrollTop+=r.bottom-(pr.bottom-10);
+    }
+  }
+  if(tvScope()!==document.body)return;
+  const fitted=document.body.classList.contains('reading-view')||document.body.classList.contains('watching-view');
+  const r=el.getBoundingClientRect(),vh=window.innerHeight,margin=fitted?6:Math.min(110,vh*.2);
+  let delta=0;
+  if(r.top<margin||r.height>vh-2*margin)delta=r.top-margin;else if(r.bottom>vh-margin)delta=r.bottom-(vh-margin);
+  if(Math.abs(delta)>1)window.scrollBy({top:delta,behavior:smooth&&!matchMedia('(prefers-reduced-motion: reduce)').matches?'smooth':'auto'});
+}
+function tvFocus(el,smooth=true){if(!el)return false;el.focus({preventScroll:true});tvReveal(el,smooth);return true}
+function tvScroller(el){
+  for(let p=el.parentElement;p&&p!==document.body&&p!==document.documentElement;p=p.parentElement){
+    if(p.matches('dialog'))return null;
+    if(/(auto|scroll)/.test(getComputedStyle(p).overflowY)&&p.scrollHeight>p.clientHeight+2)return p;
+  }
+  return null;
+}
+function tvMove(dir,smooth){
+  const cur=document.activeElement,list=tvCandidates();
+  if(!cur||cur===document.body||!list.includes(cur))return tvFocus(tvDefault(),smooth);
+  // Inside a scrolling panel (the novel's side panel), keep moving within it before leaving it.
+  const box=tvScroller(cur);
+  // Long text in the panel scrolls before focus jumps to a button out of view.
+  if(box){
+    const inside=list.filter(el=>box.contains(el)),near=tvBest(cur,inside,dir),br=box.getBoundingClientRect();
+    if(near){const r=near.getBoundingClientRect();if(r.bottom>br.top-4&&r.top<br.bottom+4)return tvFocus(near,smooth);}
+    const room=dir==='down'?box.scrollHeight-box.clientHeight-box.scrollTop:dir==='up'?box.scrollTop:0;
+    if(room>2){box.scrollBy({top:(dir==='down'?1:-1)*Math.min(room,box.clientHeight*.6),behavior:smooth?'smooth':'auto'});return true;}
+    if(near)return tvFocus(near,smooth);
+  }
+  const best=tvBest(cur,list,dir);
+  if(best)return tvFocus(best,smooth);
+  if(tvScope()===document.body&&!current&&(dir==='up'||dir==='down'))window.scrollBy({top:(dir==='down'?1:-1)*window.innerHeight*.45,behavior:smooth?'smooth':'auto'});
+  return false;
+}
+function tvBest(cur,list,dir){
+  const a=cur.getBoundingClientRect(),acx=(a.left+a.right)/2,acy=(a.top+a.bottom)/2;
+  let best=null,bestScore=Infinity;
+  for(const el of list){
+    if(el===cur)continue;
+    const b=el.getBoundingClientRect(),bcx=(b.left+b.right)/2,bcy=(b.top+b.bottom)/2;
+    let main,cross,offset;
+    if(dir==='up'||dir==='down'){
+      const slack=Math.min(a.height,b.height)*.35;
+      if(dir==='down'?(b.top<a.bottom-slack||bcy<=acy):(b.bottom>a.top+slack||bcy>=acy))continue;
+      main=dir==='down'?Math.max(0,b.top-a.bottom):Math.max(0,a.top-b.bottom);
+      cross=Math.max(0,b.left-a.right,a.left-b.right);offset=Math.abs(b.left-a.left);
+    }else{
+      const slack=Math.min(a.width,b.width)*.35;
+      if(dir==='right'?(b.left<a.right-slack||bcx<=acx):(b.right>a.left+slack||bcx>=acx))continue;
+      main=dir==='right'?Math.max(0,b.left-a.right):Math.max(0,a.left-b.right);
+      cross=Math.max(0,b.top-a.bottom,a.top-b.bottom);offset=Math.abs(bcy-acy);
+    }
+    const score=main+cross*2.5+offset*.05;
+    if(score<bestScore){bestScore=score;best=el;}
+  }
+  return best;
+}
+function tvStepSelect(el,step,wrap){
+  const n=el.options.length;if(!n)return;let i=el.selectedIndex+step;
+  i=wrap?(i+n)%n:Math.max(0,Math.min(n-1,i));if(i===el.selectedIndex)return;
+  el.selectedIndex=i;el.dispatchEvent(new Event('change',{bubbles:true}));
+}
+function tvAction(e){
+  const k=e.key,c=e.keyCode;
+  if(k==='ArrowUp'||c===38)return 'up';if(k==='ArrowDown'||c===40)return 'down';
+  if(k==='ArrowLeft'||c===37)return 'left';if(k==='ArrowRight'||c===39)return 'right';
+  if(k==='Enter'||c===13||c===23)return 'ok';
+  if(['GoBack','BrowserBack','Escape','Backspace'].includes(k)||[461,10009,27,8].includes(c))return 'back';
+  if(['MediaPlayPause','MediaPlay','MediaPause'].includes(k)||[179,415,19].includes(c))return 'play';
+  if(['MediaFastForward','MediaTrackNext','ChannelUp'].includes(k)||[417,176,427].includes(c))return 'next';
+  if(['MediaRewind','MediaTrackPrevious','ChannelDown'].includes(k)||[412,177,428].includes(c))return 'previous';
+  return null;
+}
+function tvMedia(action){
+  if(tvFrame())tvVideoAction(action);
+  else if(current){if(action==='play')play();else void flip(action==='next'?1:-1);}
+}
+function tvBack(){
+  const open=[...document.querySelectorAll('dialog')].find(d=>d.open);
+  if(open){open.close();return true;}
+  if(tvTheater){tvSetTheater(false);tvFocus(app.querySelector('.tv-play')||tvDefault(),false);return true;}
+  const h=location.hash;
+  if(h.startsWith('#story/')){if(current)tvMemory.set('#library',`[data-story="${CSS.escape(current.id)}"]`);navigate();return true;}
+  if(h.startsWith('#fable/')){tvMemory.set('#fables',`[data-fable="${CSS.escape(h.slice(7))}"]`);location.hash='#fables';return true;}
+  if(h.startsWith('#homeschool/')){tvMemory.set('#homeschool',`[data-homeschool="${CSS.escape(h.slice(12))}"]`);location.hash='#homeschool';return true;}
+  const shelf={'#fables':'#open-fables','#homeschool':'#open-homeschool','#english-playlist':'#open-playlist'}[h];
+  if(shelf){tvMemory.set('#library',shelf);navigate();return true;}
+  if(h&&h!=='#'&&h!=='#library'){navigate();return true;}
+  const first=app.querySelector('.online-shelf button')||tvDefault();
+  if(window.scrollY>10||(first&&document.activeElement!==first)){tvMemory.delete('#library');first?.focus({preventScroll:true});window.scrollTo({top:0,behavior:'smooth'});return true;}
+  return false;
+}
+function tvHandleKey(e){
+  if(e.defaultPrevented||e.altKey||e.ctrlKey||e.metaKey)return;
+  const action=tvAction(e);if(!action)return;
+  const barWasHidden=tvWakeBar();
+  if(action==='back'){if(tvBack()){e.preventDefault();e.stopImmediatePropagation();}return;}
+  if(action==='play'||action==='next'||action==='previous'){e.preventDefault();tvMedia(action);return;}
+  if(barWasHidden){e.preventDefault();if(!tvScope().contains(document.activeElement))tvFocus(tvDefault(),false);return;}
+  const el=document.activeElement,smooth=!e.repeat,zoom=$('#page-zoom');
+  if(zoom?.open&&action!=='ok'){e.preventDefault();const step=action==='up'||action==='left'?-140:140;if(action==='up'||action==='down')zoom.scrollBy({top:step});else zoom.scrollBy({left:step});return;}
+  if(action==='ok'){
+    if(!el||el===document.body||!tvVisible(el)){e.preventDefault();tvFocus(tvDefault(),false);return;}
+    if(el.matches('select')){e.preventDefault();tvStepSelect(el,1,true);return;}
+    if(el.matches('input[type=checkbox]')){e.preventDefault();el.click();return;}
+    if(el.matches('input[type=range]'))e.preventDefault();
+    return; // Buttons, links and "Read the text" open as usual.
+  }
+  e.preventDefault();
+  const sideways=action==='left'||action==='right';
+  if(sideways&&el?.matches?.('select')){tvStepSelect(el,action==='right'?1:-1,false);return;}
+  if(sideways&&el?.matches?.('input[type=range]')){const step=Number(el.step)||1;el.value=String(Math.min(Number(el.max),Math.max(Number(el.min),Number(el.value)+(action==='right'?2:-2)*step)));el.dispatchEvent(new Event('input',{bubbles:true}));return;}
+  // In a story, left and right turn the page from the Read button, or at the edge of the page buttons.
+  const inStory=current&&tvScope()===document.body;
+  if(sideways&&inStory&&(!el||el===document.body||el.matches('[data-listen]'))){void flip(action==='right'?1:-1);return;}
+  if(!tvMove(action,smooth)&&sideways&&inStory&&app.contains(el))void flip(action==='right'?1:-1);
+}
+let tvTurnWait=0,tvRouteMoved=false;
+function tvEnsureFocus(){
+  // A page turn briefly disables its buttons; wait for it to finish before choosing a new focus.
+  if(turning){clearTimeout(tvTurnWait);tvTurnWait=setTimeout(tvEnsureFocus,120);return;}
+  const el=document.activeElement,moved=tvRouteMoved;tvRouteMoved=false;
+  if(!moved&&el&&el!==document.body&&tvVisible(el)&&tvScope().contains(el))return;
+  if(moved&&tvScope()!==document.body&&tvScope().contains(el))return;
+  tvFocus(tvDefault(),false);
+}
+function tvScheduleFocus(){cancelAnimationFrame(tvFocusFrame);tvFocusFrame=requestAnimationFrame(()=>requestAnimationFrame(tvEnsureFocus));}
+window.zooziTvBack=()=>tvBack()?'handled':'exit';
+window.zooziTvKey=name=>{if(!['play','next','previous'].includes(name))return;tvWakeBar();tvMedia(name);};
+if(tvMode){
+  window.addEventListener('keydown',tvHandleKey,true);
+  new MutationObserver(tvScheduleFocus).observe(app,{childList:true,subtree:true,attributes:true,attributeFilter:['disabled','hidden']});
+  document.addEventListener('focusin',e=>{if(!app.contains(e.target))return;const key=tvKeyFor(e.target);if(key)tvMemory.set(tvRoute(),key);});
+  window.addEventListener('hashchange',()=>{tvRouteMoved=true;tvSetTheater(false);tvScheduleFocus();});
+  document.querySelectorAll('dialog').forEach(d=>d.addEventListener('close',()=>setTimeout(tvEnsureFocus,0)));
+  window.addEventListener('focus',tvScheduleFocus);
+}
+const tvToggle=$('#tv-remote');
+if(tvToggle){tvToggle.checked=tvMode;tvToggle.onchange=e=>{const url=new URL(location.href);url.searchParams.set('tv',e.target.checked?'1':'0');location.replace(url.href);};}
+
+$('#install-top').onclick=install;$('#install-settings').onclick=install;installState();parseRoute();if(tvMode)tvScheduleFocus();
 // Register as soon as the scripts are ready, without waiting for images or fonts.
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(reg=>reg.update()).catch(()=>{
   $('#install-help').textContent='The offline copy could not finish loading. Keep your internet connection on and reload to try again. You can still read online.';

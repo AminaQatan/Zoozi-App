@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Zoozi App</title>
+<style>
+  html,body{height:100%;margin:0}
+  body{display:grid;place-items:center;background:#f3f7ff;color:#2c3053;font-family:system-ui,sans-serif;text-align:center}
+  main{max-width:560px;padding:32px}
+  h1{font-size:34px;margin:0 0 12px;color:#5432a9}
+  p{font-size:19px;line-height:1.5;margin:0 0 26px}
+  button{font:inherit;font-size:20px;font-weight:800;border:0;border-radius:18px;padding:16px 34px;background:#6b48c7;color:#fff;box-shadow:0 4px 0 #4e319b}
+  button:focus{outline:5px solid #ff9f1c;outline-offset:4px}
+  small{display:block;margin-top:28px;font-size:15px;color:#5432a9;font-weight:700}
+</style></head>
+<body><main>
+  <h1>Let’s connect to the internet</h1>
+  <p>Zoozi needs the internet the first time it opens. Check the TV’s Wi-Fi, then press OK to try again.</p>
+  <button id="retry" autofocus>Try again</button>
+  <small>Designed by: Ms. Amina Qatan</small>
+</main>
+<script>
+  const retry=document.getElementById('retry');
+  retry.onclick=()=>location.replace('https://aminaqatan.github.io/Zoozi-App/?tv=1');
+  retry.focus();
+  addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();retry.focus();}});
+</script>
+</body></html>

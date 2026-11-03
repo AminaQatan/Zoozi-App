@@ -1,0 +1,47 @@
+plugins {
+    id 'com.android.application'
+}
+
+// The build number from GitHub becomes the app's version code.
+def buildNumber = (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
+
+android {
+    namespace 'io.github.aminaqatan.zoozitv'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'io.github.aminaqatan.zoozitv'
+        minSdk 21
+        targetSdk 35
+        versionCode buildNumber
+        versionName "1.0.${buildNumber}"
+    }
+
+    signingConfigs {
+        release {
+            // The GitHub workflow creates this key for each build (see .github/workflows/build-tv-app.yml).
+            storeFile file(System.getenv('ZOOZI_KEYSTORE') ?: 'zoozi-tv.jks')
+            storePassword System.getenv('ZOOZI_KEY_PASSWORD') ?: 'zoozi-tv'
+            keyAlias 'zoozi'
+            keyPassword System.getenv('ZOOZI_KEY_PASSWORD') ?: 'zoozi-tv'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    lint {
+        // The APK is installed directly on the TV, so store-only checks must not stop the build.
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+}
