@@ -1,0 +1,98 @@
+# Builds the Zoozi TV app (an APK for Sony BRAVIA / Google TV / Android TV)
+# and publishes it at:
+#   https://github.com/<owner>/<repo>/releases/download/tv-app/zoozi-tv.apk
+# It runs by itself when anything in tv-app/ changes, or from the Actions tab
+# with "Run workflow". Story updates do NOT need a new APK: the TV app always
+# shows the latest version of the website.
+name: Build Zoozi TV app
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'tv-app/**'
+      - '.github/workflows/build-tv-app.yml'
+      - 'MainActivity.java'
+      - 'AndroidManifest.xml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: zoozi-tv-app
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the TV app files
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: tv-app
+          filter: blob:none
+
+      - name: Put the TV app files in place
+        run: |
+          # Works with the tv-app/ folder, or with its files uploaded loose
+          # into the main folder of the repository.
+          if [ ! -f tv-app/app/src/main/AndroidManifest.xml ]; then
+            echo "Building from the files in the main folder."
+            M=tv-app/app/src/main
+            mkdir -p $M/java/io/github/aminaqatan/zoozitv $M/assets $M/res/values $M/res/drawable $M/res/drawable-xxxhdpi $M/res/mipmap-xxxhdpi
+            printf "plugins {\n    id 'com.android.application' version '8.7.3' apply false\n}\n" > tv-app/build.gradle
+            cp settings.gradle gradle.properties tv-app/
+            cp build.gradle tv-app/app/build.gradle
+            cp AndroidManifest.xml $M/
+            cp MainActivity.java $M/java/io/github/aminaqatan/zoozitv/
+            cp offline.html $M/assets/
+            cp strings.xml themes.xml $M/res/values/
+            cp splash.xml $M/res/drawable/
+            cp tv_banner.png $M/res/drawable-xxxhdpi/
+            cp ic_launcher.png $M/res/mipmap-xxxhdpi/
+          fi
+          find tv-app -type f | sort
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Create a signing key for this build
+        run: |
+          KEY_PASSWORD="$(openssl rand -hex 16)"
+          echo "::add-mask::$KEY_PASSWORD"
+          echo "ZOOZI_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+          echo "ZOOZI_KEYSTORE=$RUNNER_TEMP/zoozi-tv.jks" >> "$GITHUB_ENV"
+          keytool -genkeypair -keystore "$RUNNER_TEMP/zoozi-tv.jks" -storetype PKCS12 \
+            -alias zoozi -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass "$KEY_PASSWORD" -keypass "$KEY_PASSWORD" \
+            -dname "CN=Zoozi App, O=Ms. Amina Qatan"
+
+      - name: Build the APK
+        working-directory: tv-app
+        run: gradle --no-daemon --stacktrace assembleRelease
+
+      - name: Publish the APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp tv-app/app/build/outputs/apk/release/app-release.apk zoozi-tv.apk
+          gh release delete tv-app --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          gh release create tv-app zoozi-tv.apk --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --latest=false \
+            --title "Zoozi TV app" \
+            --notes "Zoozi App for Sony BRAVIA, Google TV and Android TV. Built $(date -u +'%d %B %Y'). Download: https://github.com/$GITHUB_REPOSITORY/releases/download/tv-app/zoozi-tv.apk"
+
+      - name: Keep a copy with this run
+        uses: actions/upload-artifact@v4
+        with:
+          name: zoozi-tv-apk
+          path: zoozi-tv.apk
